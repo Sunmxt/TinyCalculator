@@ -1,0 +1,19 @@
+This is a tiny calculator degisned by a small group.
+This project is created with and successfully compiled by Visual Studio 2008.
+
+Thanks to ZhangHanWen, ZhangYaKai, MaiXuTao.
+
+Source:
+
+    Name                               Description
+    calc_window.cpp                    UI for calculator
+    calc_window.h                      UI Header
+    
+    object.cpp                         objective base
+    object.h                           objective base and Slight Framework base
+
+    slight_wnd.cpp / slight_wnd.h      tiny framework(based on Thunk) for Windows UI Window.
+    
+    calculator.cpp                     application entry
+    
+    resource.h                         header of resources definitions
