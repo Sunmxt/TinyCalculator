@@ -19,8 +19,13 @@
 #define IDC_NUM_7                       1014
 #define IDC_NUM_6                       1015
 #define IDC_NUM_8                       1016
-#define IDC_NUM_10                      1017
 #define IDC_EQUAL                       1017
+#define IDC_MEM_PLUS                    1018
+#define IDC_MEM_SUB                     1019
+#define IDC_MEM_CLEAR                   1020
+#define IDC_MEM_READ                    1021
+#define IDC_DIV2                        1022
+#define IDC_DOT                         1022
 
 // Next default values for new objects
 // 

@@ -1,61 +1,5 @@
 #include "slight_wnd.h"
 
-namespace Slight {
-    class CWindowThunk32
-	{
-	public:
-		#pragma pack(push ,1)
-		typedef struct Window_Thunk_Execute_Code 
-		{
-			BYTE mov_code_1;//mov dowrd ptr [handle] ,object_ptr
-			BYTE mov_code_2;
-			BYTE mov_code_3;
-			BYTE mov_code_4;
-			DWORD object_ptr;
-
-			BYTE push_code;//push process_address
-			WNDPROC process_address;
-
-			BYTE ret_code;//ret (jmp)
-		}ThunkCode;
-		#pragma pack(pop)
-
-	public:
-		CWindowThunk32();
-		~CWindowThunk32();
-
-		WNDPROC setProcess(WNDPROC Process);
-		DWORD setPointer(DWORD Pointer);
-		
-		bool lock();
-		bool unlock();
-
-		bool init();
-
-		void* getThunk() const;
-	private:
-		ThunkCode *thunk;
-	};
-
-	template<int SizeOfPointer = sizeof(void*)>
-	class CWindowThunkTrait
-	{};
-
-	template<>
-	class CWindowThunkTrait<4>
-	{
-	public:
-		typedef CWindowThunk32 ThunkType;
-		typedef DWORD PointerDataType;
-	};
-
-	typedef struct Window_Create_Params 
-	{
-		LPVOID user;
-		void* object;
-	}WindowCreateParams;
-}
-
 using namespace Slight;
 /////////////////////////////////////////////////////
 CWindowThunk32::CWindowThunk32()
@@ -164,10 +108,14 @@ LRESULT CALLBACK CWinNativeView::InitialWindowProcess1(HWND handle ,UINT message
         view = (CWinNativeView*)params -> object;
         view -> handle = handle;
         
+        lParam = (LPARAM)params -> user;
+        
         ((WindowThunk*)view -> private_data) -> setProcess((WNDPROC)WindowProcess);
 		((WindowThunk*)view -> private_data) -> lock();
         
         ::SetWindowLong(handle ,GWL_WNDPROC ,(LONG)((WindowThunk*)view -> private_data) -> getThunk());
+        
+        return view -> handleMessage(message, wParam, lParam);
     }
 
 	return ::DefWindowProc(handle ,message ,wParam ,lParam);
@@ -201,7 +149,8 @@ LRESULT CALLBACK CWinNativeView::WindowProcess(CWinNativeView *view ,UINT messag
 
 	if(WM_NCDESTROY == message)
 	{
-		view -> detach();
+		view -> handle = 0;
+        view -> free_thunk();
 	}
 
 	return return_value;
@@ -209,11 +158,14 @@ LRESULT CALLBACK CWinNativeView::WindowProcess(CWinNativeView *view ,UINT messag
 
 LRESULT CWinNativeView::handleMessage(UINT message ,WPARAM wParam ,LPARAM lParam)
 {
-	return ::DefWindowProc(handle ,message ,wParam ,lParam);
+    if(!origin_process)
+        return ::DefWindowProc(handle ,message ,wParam ,lParam);
+    
+    return origin_process(handle ,message, wParam, lParam);
 }
 
 CWinNativeView::CWinNativeView()
-:handle(0) ,private_data(0)
+:handle(0) ,private_data(0), origin_process(0)
 {}
 
 CWinNativeView::~CWinNativeView()
@@ -242,14 +194,9 @@ bool CWinNativeView::create(int X ,int Y ,int Width ,int Height ,wchar_t *Title)
 	WindowThunk *thunk;
 	WindowCreateParams params;
 
-	if(!private_data)
-	{
-		private_data = new WindowThunk;
-	}
-	thunk = (WindowThunk*)private_data;
-
-	thunk -> setProcess((WNDPROC)InitialWindowProcess2);
-	thunk -> setPointer((PointerData)this);
+	thunk = alloc_thunk();
+    if(!thunk)
+        return false;
 
 	params.object = this;
 	params.user = NULL;
@@ -283,14 +230,9 @@ bool CWinNativeView::createDialog(UINT ResourceID)
     WindowThunk *thunk;
 	WindowCreateParams params;
 
-	if(!private_data)
-	{
-		private_data = new WindowThunk;
-	}
-	thunk = (WindowThunk*)private_data;
-
-	thunk -> setProcess((WNDPROC)InitialWindowProcess2);
-	thunk -> setPointer((PointerData)this);
+	thunk = alloc_thunk();
+    if(!thunk)
+        return false;
 
 	params.object = this;
 	params.user = NULL;
@@ -313,14 +255,98 @@ HWND CWinNativeView::getHandle() const
 	return handle;
 }
 
+CWindowThunkTrait<>::ThunkType* CWinNativeView::alloc_thunk(bool UseVaild, WNDPROC Process)
+{
+    typedef CWindowThunkTrait<>::ThunkType WindowThunk;
+    typedef CWindowThunkTrait<>::PointerDataType PointerData;
+    
+    WindowThunk* thunk;
+    
+    if(!private_data)
+	{
+		private_data = new WindowThunk;
+	}
+    else
+    {
+        if(!UseVaild)
+        {
+            setError(ERR_VAILD_OBJECT);
+            return 0;
+        }
+    }
+    
+    if(!private_data)
+    {
+        setError(ERR_OS_ERROR);
+        return 0;
+    }
+    
+	thunk = (WindowThunk*)private_data;
+
+	thunk -> setProcess((WNDPROC)Process);
+	thunk -> setPointer((PointerData)this);
+    
+    return thunk;
+}
+
+bool CWinNativeView::free_thunk()
+{
+    typedef CWindowThunkTrait<>::ThunkType WindowThunk;
+    
+    if(!private_data)
+        return false;
+    
+    delete (WindowThunk*)private_data;
+
+    private_data = 0;
+
+    return true;
+}   
+
+
 HWND CWinNativeView::detach()
 {
 	HWND old;
 
+    if(origin_process)
+    {
+        ::SetWindowLong(handle ,GWL_WNDPROC ,(LONG)origin_process);
+    }
+    else
+    {
+        ::DestroyWindow(handle);
+    }
+    
 	old = handle;
 	handle = 0;
 
+    free_thunk();
+    
 	return old;
+}
+
+bool CWinNativeView::attach(HWND Handle)
+{
+    typedef CWindowThunkTrait<>::ThunkType WindowThunk;
+    
+    WindowThunk* thunk;
+    
+    if(!::IsWindow(Handle))
+    {
+        setError(ERR_INVAILD_PARAMETER);
+        return false;
+    }
+    
+    thunk = alloc_thunk(true, (WNDPROC)WindowProcess);
+    if(!thunk)
+        return false;
+    
+    
+    origin_process = (WNDPROC)::SetWindowLong(Handle ,GWL_WNDPROC ,(LONG)thunk -> getThunk());
+    
+    handle = Handle;
+    
+    return true;
 }
 
 bool CWinNativeView::move(int X ,int Y)
