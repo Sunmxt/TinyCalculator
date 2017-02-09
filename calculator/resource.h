@@ -24,8 +24,9 @@
 #define IDC_MEM_SUB                     1019
 #define IDC_MEM_CLEAR                   1020
 #define IDC_MEM_READ                    1021
-#define IDC_DIV2                        1022
 #define IDC_DOT                         1022
+#define IDC_CLEAR2                      1023
+#define IDC_CLEAR_CUR                   1023
 
 // Next default values for new objects
 // 

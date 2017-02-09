@@ -4,15 +4,9 @@
 
 #include "resource.h"
 
-#ifdef _UNICODE
-	#define lsprintf swprintf
-    #define tout    wcout
-    #define tstring wstring
-#else
-	#define lsprintf sprintf
-    #define tout cout
-    #define tstring string
-#endif
+
+CCalculatorWindow::CCalculatorWindow()
+{}
 
 LRESULT CCalculatorWindow::handleMessage(UINT message ,WPARAM wParam ,LPARAM lParam)
 {
@@ -27,7 +21,8 @@ LRESULT CCalculatorWindow::handleMessage(UINT message ,WPARAM wParam ,LPARAM lPa
     case WM_INITDIALOG:
         return OnInit((LPVOID)lParam);
     default:
-        return ::DefWindowProc(handle, message, wParam, lParam);
+        //return ::DefWindowProc(handle, message, wParam, lParam);
+        return FALSE;
 	}
     
     return TRUE;
@@ -41,7 +36,7 @@ int CCalculatorWindow::OnInit(LPVOID Param)
     ::SendMessage(edit_handle, EM_SETLIMITTEXT, 20, 0);
 
     edit_control.attach(edit_handle);
-    return 1;
+    return FALSE;
 }
 
 bool CCalculatorWindow::StandardizeString(TCHAR* String)
@@ -78,6 +73,53 @@ bool CCalculatorWindow::StandardizeString(TCHAR* String)
     
     String[put] = 0;
     
+    return result;
+}
+
+bool CCalculatorWindow::SaveFirstDigit()
+{
+    uint length;
+    TCHAR* string;
+
+    length = SendMessage(edit_control.getHandle(), EM_LINELENGTH, 0, 0);
+    if(!length)
+        return false;
+    
+    string = new TCHAR[length + 2];
+    if(!string)
+        return false;
+    
+    SendMessage(edit_control.getHandle(), WM_GETTEXT, length + 1, (LPARAM)string);
+    
+    FillDigitString(string);
+    
+    digit.append(string);
+    
+    delete string;
+    
+    return true;
+}
+
+bool CCalculatorWindow::FillDigitString(TCHAR* String)
+{
+    uint length;
+    bool dot_front, result;
+    
+    result = 0;
+    length = lstrlen(String);
+    dot_front = true;
+    
+   /* if(0 == String - lstrchr(String, '.'))
+    {
+        dot_front = true;
+        tmemmove(String + 1, String, length + 1);
+        String[0] = '0';
+        length += 1;
+    }
+    
+    
+    if(String - lstrrchr(String, '.'))*/
+
     return result;
 }
 
@@ -157,11 +199,11 @@ int CCalculatorWindow::OnControlNotify(UINT NotifyCode, UINT ID, HWND Handle)
     case IDC_MEM_READ:break;
     case IDC_DOT:
         SendMessage(edit_control.getHandle(), WM_CHAR, (WPARAM)'.', 0);
-    break;
+        break;
     case IDC_EDIT1:
         return OnEditChange(Handle);
     }
-	return 1;
+	return TRUE;
 }
 
 /////////////////////////////////////////////

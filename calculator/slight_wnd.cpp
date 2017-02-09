@@ -80,6 +80,30 @@ void* CWindowThunk32::getThunk() const
 {return thunk;}
 
 
+LRESULT CALLBACK CWinNativeView::InitialDialogProcess(HWND Handle, UINT Message, WPARAM wParam, LPARAM lParam)
+{
+    typedef CWindowThunkTrait<>::ThunkType WindowThunk;
+    WindowCreateParams *params;
+    CWinNativeView *view;
+    
+    if(WM_INITDIALOG == Message)
+    {
+        params = (WindowCreateParams*)lParam;
+        view = (CWinNativeView*)params -> object;
+        view -> handle = Handle;
+        
+        lParam = (LPARAM)params -> user;
+        
+		((WindowThunk*)view -> private_data) -> lock();
+        
+        ::SetWindowLong(Handle ,DWL_DLGPROC, (LONG)((WindowThunk*)view -> private_data) -> getThunk());
+        
+        return view -> handleMessage(Message, wParam, lParam);
+    }
+    
+    return FALSE;
+}
+
 LRESULT CALLBACK CWinNativeView::InitialWindowProcess1(HWND handle ,UINT message ,WPARAM wParam ,LPARAM lParam)
 {
 	typedef CWindowThunkTrait<>::ThunkType WindowThunk;
@@ -102,21 +126,7 @@ LRESULT CALLBACK CWinNativeView::InitialWindowProcess1(HWND handle ,UINT message
 		
 		return view -> handleMessage(message ,wParam ,lParam);
 	}
-    else if(WM_INITDIALOG == message)
-    {
-        params = (WindowCreateParams*)lParam;
-        view = (CWinNativeView*)params -> object;
-        view -> handle = handle;
-        
-        lParam = (LPARAM)params -> user;
-        
-        ((WindowThunk*)view -> private_data) -> setProcess((WNDPROC)WindowProcess);
-		((WindowThunk*)view -> private_data) -> lock();
-        
-        ::SetWindowLong(handle ,GWL_WNDPROC ,(LONG)((WindowThunk*)view -> private_data) -> getThunk());
-        
-        return view -> handleMessage(message, wParam, lParam);
-    }
+
 
 	return ::DefWindowProc(handle ,message ,wParam ,lParam);
 }
@@ -230,14 +240,14 @@ bool CWinNativeView::createDialog(UINT ResourceID)
     WindowThunk *thunk;
 	WindowCreateParams params;
 
-	thunk = alloc_thunk();
+	thunk = alloc_thunk(false, (WNDPROC)WindowProcess);
     if(!thunk)
         return false;
 
 	params.object = this;
 	params.user = NULL;
     
-    handle = ::CreateDialogParam(::GetModuleHandle(NULL), MAKEINTRESOURCE(ResourceID), NULL, (DLGPROC)InitialWindowProcess1, (LPARAM)&params);
+    handle = ::CreateDialogParam(::GetModuleHandle(NULL), MAKEINTRESOURCE(ResourceID), NULL, (DLGPROC)InitialDialogProcess, (LPARAM)&params);
 
     if(!handle)
 	{

@@ -63,6 +63,7 @@ namespace Slight
 	public:
 		static LRESULT CALLBACK InitialWindowProcess1(HWND handle ,UINT message ,WPARAM wParam ,LPARAM lParam);
 		static LRESULT CALLBACK InitialWindowProcess2(CWinNativeView *view ,UINT message ,WPARAM wParam ,LPARAM lParam);
+        static LRESULT CALLBACK InitialDialogProcess(HWND Handle, UINT Message, WPARAM wParam, LPARAM lParam);
 		static LRESULT CALLBACK WindowProcess(CWinNativeView *View ,UINT message ,WPARAM wParam ,LPARAM lParam);
 	public:
 		CWinNativeView();
