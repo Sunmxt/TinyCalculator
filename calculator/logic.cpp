@@ -94,10 +94,10 @@ void CCalculator::getResult(std::tstring &Number)
     TCHAR *string;
     uint length;
     
-    length = lsnprintf(0, 0, TEXT("%g"), result);
+    length = lsnprintf(0, 0, TEXT("%lf"), result);
     string = new TCHAR[length + 1];
     
-    length = lsnprintf(string, length, TEXT("%g"), result);
+    length = lsnprintf(string, length, TEXT("%lf"), result);
     string[length] = 0;
 
     Number.assign(string);
