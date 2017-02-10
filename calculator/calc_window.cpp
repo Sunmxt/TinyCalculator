@@ -6,6 +6,7 @@
 
 
 CCalculatorWindow::CCalculatorWindow()
+:status(CALC_STATUS_IDLE)
 {}
 
 LRESULT CCalculatorWindow::handleMessage(UINT message ,WPARAM wParam ,LPARAM lParam)
@@ -20,14 +21,38 @@ LRESULT CCalculatorWindow::handleMessage(UINT message ,WPARAM wParam ,LPARAM lPa
 		return OnControlNotify(HIWORD(wParam), LOWORD(wParam), (HWND)lParam);
     case WM_INITDIALOG:
         return OnInit((LPVOID)lParam);
+    case WM_CHAR:
+        return OnChar((TCHAR)wParam, (DWORD)lParam);
     default:
-        //return ::DefWindowProc(handle, message, wParam, lParam);
         return FALSE;
 	}
     
     return TRUE;
 }
 
+int CCalculatorWindow::OnChar(TCHAR Charatrer, DWORD KeyData)
+{
+    switch(Charatrer)
+    {
+    case '+':
+        OnPlus();break;
+    case '-':
+        OnSub();break;
+    case '*':
+        OnMul();break;
+    case '/':
+        OnDiv();break;
+    case 'c':
+    case 'C':
+        CleanAll();break;
+    case VK_RETURN:
+    case '=':
+        OnEqual();break;
+    }
+    
+    return TRUE;
+}
+ 
 int CCalculatorWindow::OnInit(LPVOID Param)
 {
     HWND edit_handle;
@@ -36,34 +61,60 @@ int CCalculatorWindow::OnInit(LPVOID Param)
     ::SendMessage(edit_handle, EM_SETLIMITTEXT, 20, 0);
 
     edit_control.attach(edit_handle);
-    return FALSE;
+    
+    return TRUE;
 }
 
-bool CCalculatorWindow::StandardizeString(TCHAR* String)
+bool CCalculatorWindow::StandardizeString(TCHAR* String, WPARAM &CaretStart, LPARAM &CaretEnd)
 {
-    uint scan, put;
-    bool dot, result;
+    #define CaretForward()\
+        CaretStart = CaretStart > 1 ? CaretStart - 1 : 0; \
+        CaretEnd = CaretEnd > 1 ? CaretEnd - 1 : 0;
+        
+    #define SkipThisCharacter() {\
+        CaretForward()\
+        result = true;\
+        continue;}
+        
+    uint scan, put, length;
+    bool dot, result, zero_front, zero_end;
     
     put = scan = 0;
-    result = dot = false;
+    zero_front = zero_end = result = dot = false;
     
-    for(;String[scan]; scan++)
+    for(;String[scan]; scan ++)
     {
         switch(String[scan])
         {
         case '.':
+            zero_end = zero_front = true;
             if(dot)
-            {
-                result = true;
-                continue;
-            }
+                SkipThisCharacter()
             dot = true;
             break;
         default:
             if(!isdigit(String[scan]))
+                SkipThisCharacter()
+            else
             {
-                result = true;
-                continue;
+                if(!zero_end)
+                {
+                    if('0' == String[scan])
+                        if(zero_front)
+                            SkipThisCharacter()
+                        else
+                            zero_front = true;
+                    else
+                    {
+                        if(zero_front)
+                        {
+                            put--;
+                            CaretForward()
+                            result = true;
+                        }   
+                        zero_end = zero_front = true;
+                    }
+                }
             }
         }
         
@@ -73,27 +124,44 @@ bool CCalculatorWindow::StandardizeString(TCHAR* String)
     
     String[put] = 0;
     
+    length = lstrlen(String);
+    
+    if(0 == String - lstrchr(String, '.'))
+    {
+        tmemmove(String + 1, String, length + 1);
+        String[0] = '0';
+        length += 1;
+        CaretStart ++; CaretEnd ++;
+        result = true;
+    }
+    
+    #undef SkipThisCharacter
+    #undef CaretForward
+    
     return result;
 }
 
-bool CCalculatorWindow::SaveFirstDigit()
+bool CCalculatorWindow::GetDigit(std::tstring &String)
 {
     uint length;
     TCHAR* string;
 
     length = SendMessage(edit_control.getHandle(), EM_LINELENGTH, 0, 0);
     if(!length)
+    {
+        String.assign(TEXT("0"));
         return false;
+    }
     
-    string = new TCHAR[length + 2];
+    string = new TCHAR[length + 3]; //terminator + two digit(possible)
     if(!string)
         return false;
-    
-    SendMessage(edit_control.getHandle(), WM_GETTEXT, length + 1, (LPARAM)string);
+
+    SendMessage(edit_control.getHandle(), WM_GETTEXT, length + 3, (LPARAM)string);
     
     FillDigitString(string);
     
-    digit.append(string);
+    String.assign(string);
     
     delete string;
     
@@ -101,66 +169,214 @@ bool CCalculatorWindow::SaveFirstDigit()
 }
 
 bool CCalculatorWindow::FillDigitString(TCHAR* String)
-{
-    uint length;
-    bool dot_front, result;
-    
-    result = 0;
-    length = lstrlen(String);
-    dot_front = true;
-    
-   /* if(0 == String - lstrchr(String, '.'))
+{   
+    if(0 == String - lstrstr(String, TEXT("0.")))
     {
-        dot_front = true;
-        tmemmove(String + 1, String, length + 1);
-        String[0] = '0';
-        length += 1;
+        for(uint i = 2; String[i] ; i++)
+        {
+            if(String[i] != '0')
+                return false;
+        }
+        
+        String[1] = 0;
+        return true;
     }
-    
-    
-    if(String - lstrrchr(String, '.'))*/
 
-    return result;
+    return false;
 }
 
 int CCalculatorWindow::OnEditChange(HWND Handle)
 {
     TCHAR *string;
     DWORD length;
+    WPARAM pos_start;
+    LPARAM pos_end;
     
     length = SendMessage(Handle, EM_LINELENGTH, 0, 0);
     if(!length)
         return 1;
     
-    string = new TCHAR[length + 1];
+    string = new TCHAR[length + 3];
     if(!string)
         return 0;
     
-    SendMessage(Handle, WM_GETTEXT, length + 1, (LPARAM)string);
+    SendMessage(Handle, WM_GETTEXT, length + 3, (LPARAM)string);
+    SendMessage(Handle, EM_GETSEL, (WPARAM)&pos_start, (LPARAM)&pos_end);
     
-    if(StandardizeString(string))
+    if(StandardizeString(string, pos_start, pos_end))
+    {
         SendMessage(Handle, WM_SETTEXT, 0, (LPARAM)string);
+        SendMessage(Handle, EM_SETSEL, pos_start, pos_end);
+    }
     
     delete string;
     
     return 1;
 }
 
+int CCalculatorWindow::Calculate(std::tstring Number)
+{
+    switch(status)
+    {
+    case CALC_STATUS_IDLE:
+        calc.assign(Number);
+        SendMessage(edit_control.getHandle(), EM_CALC_DISPLAY_RESULT, 0, 0);
+        return TRUE;
+        
+    case CALC_PLUS_WAIT:
+        calc.plus(Number);
+        break;
+        
+    case CALC_SUB_WAIT:
+        calc.sub(Number);
+        break;
+        
+    case CALC_MUL_WAIT:
+        calc.multiply(Number);
+        break;
+        
+    case CALC_DIV_WAIT:
+        calc.division(Number);
+        break;
+    }
+    
+    calc.getResult(Number);
+    SendMessage(edit_control.getHandle(), WM_SETTEXT, 0, (LPARAM)Number.c_str());
+    
+    return TRUE;
+}
+
+int CCalculatorWindow::OnPlus()
+{
+    std::tstring Number;
+    GetDigit(Number);
+    Calculate(Number);
+    status = CALC_PLUS_WAIT;
+
+    return TRUE;
+}
+
+int CCalculatorWindow::OnSub()
+{
+    std::tstring Number;
+    GetDigit(Number);
+    Calculate(Number);
+    status = CALC_SUB_WAIT;
+    
+    return TRUE;
+}
+
+int CCalculatorWindow::OnMul()
+{
+    std::tstring Number;
+    GetDigit(Number);
+    Calculate(Number);
+    status = CALC_MUL_WAIT;
+    
+    return TRUE;
+}
+
+int CCalculatorWindow::OnDiv()
+{
+    std::tstring Number;
+    GetDigit(Number);
+    Calculate(Number);
+    status = CALC_DIV_WAIT;
+    
+    return TRUE;
+}
+
+int CCalculatorWindow::OnEqual()
+{
+    std::tstring Number;
+    if(CALC_STATUS_IDLE != status)
+    {
+         GetDigit(Number);
+         Calculate(Number);
+         SendMessage(edit_control.getHandle(), EM_CALC_DISPLAY_RESULT, 0, 0);
+         status = CALC_STATUS_IDLE;
+    }
+
+    return TRUE;
+}
+
+int CCalculatorWindow::OnRegPlus()
+{
+    std::tstring Number;
+    GetDigit(Number);
+    
+    reg.plus(Number);
+    return TRUE;
+}
+
+int CCalculatorWindow::OnRegSub()
+{
+    std::tstring Number;
+    GetDigit(Number);
+    
+    reg.sub(Number);
+    
+    return TRUE;
+}
+
+int CCalculatorWindow::OnRegStore()
+{
+    std::tstring Number;
+    GetDigit(Number);
+    
+    reg.assign(Number);
+    return TRUE;
+}
+
+int CCalculatorWindow::OnRegShow()
+{
+    std::tstring Number;
+    reg.getResult(Number);
+    
+    SendMessage(edit_control.getHandle(), WM_SETTEXT, 0, (LPARAM)Number.c_str());
+    
+    return TRUE;
+}
+
+int CCalculatorWindow::CleanAll()
+{
+    status = CALC_STATUS_IDLE;
+    SendMessage(edit_control.getHandle(), WM_SETTEXT, 0 ,(LPARAM)TEXT(""));
+
+    return TRUE;
+}
+
+int CCalculatorWindow::CleanCurrent()
+{
+    SendMessage(edit_control.getHandle(), WM_SETTEXT, 0 ,(LPARAM)TEXT(""));
+
+    return TRUE;
+}
+    
 int CCalculatorWindow::OnControlNotify(UINT NotifyCode, UINT ID, HWND Handle)
 {
 #ifdef _DEBUG
 	TCHAR string[100];
-	lsprintf(string, TEXT("NotifyCode = 0x%x, ID = 0x%x, Handle = 0x%x\n") ,NotifyCode, ID, Handle);
+	lsprintf(string, TEXT("[Controls] NotifyCode = 0x%x, ID = 0x%x, Handle = 0x%x\n") ,NotifyCode, ID, Handle);
     std::wcout << string;
 #endif
 
     switch(ID)
     {
-    case IDC_PLUS:break;
-    case IDC_SUB:break;           
-    case IDC_MUL:break;                        
-    case IDC_DIV:break;                         
-    case IDC_CLEAR:break;             
+    case IDC_PLUS:
+        return OnPlus();break;
+    case IDC_SUB:
+        return OnSub();break;           
+    case IDC_MUL:
+        return OnMul();break;                        
+    case IDC_DIV:
+        return OnDiv();break;                         
+    case IDC_CLEAR:
+        CleanAll();
+        break;
+    case IDC_CLEAR_CUR:
+        CleanCurrent();
+        break;
     case IDC_NUM_9:
         SendMessage(edit_control.getHandle(), WM_CHAR, (WPARAM)'9', 0);
         break;
@@ -192,13 +408,29 @@ int CCalculatorWindow::OnControlNotify(UINT NotifyCode, UINT ID, HWND Handle)
         SendMessage(edit_control.getHandle(), WM_CHAR, (WPARAM)'8', 0);
         break;                       
     case IDC_EQUAL:
+        OnEqual();
         break;                                        
-    case IDC_MEM_PLUS:break;                    
-    case IDC_MEM_SUB:break;                     
-    case IDC_MEM_CLEAR:break;                   
-    case IDC_MEM_READ:break;
+    case IDC_MEM_PLUS:
+        OnRegPlus();
+        break;                    
+    case IDC_MEM_SUB:
+        OnRegSub();
+        break;                     
+    case IDC_MEM_CLEAR:
+        reg.assign(std::tstring(TEXT("0")));
+        break;               
+    case IDC_MEM_READ:
+        OnRegShow();
+        break;
+    case IDC_MEM_STORE:
+        OnRegStore();
+        break;
     case IDC_DOT:
         SendMessage(edit_control.getHandle(), WM_CHAR, (WPARAM)'.', 0);
+        break;
+        
+    case IDC_BACKSPACE:
+        SendMessage(edit_control.getHandle(), WM_CHAR, (WPARAM)0x08/* Backspace */, 0);
         break;
     case IDC_EDIT1:
         return OnEditChange(Handle);
@@ -207,6 +439,11 @@ int CCalculatorWindow::OnControlNotify(UINT NotifyCode, UINT ID, HWND Handle)
 }
 
 /////////////////////////////////////////////
+
+CCalculatorEditControl::CCalculatorEditControl()
+:status(CALC_EDIT_CTL_IDLE)
+{
+}
 
 LRESULT CCalculatorEditControl::handleMessage(UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -217,6 +454,10 @@ LRESULT CCalculatorEditControl::handleMessage(UINT message, WPARAM wParam, LPARA
     //character filter
     switch(message)
     {
+    case EM_CALC_DISPLAY_RESULT:
+        status = CALC_EDIT_CTL_DISPLAY_RESULT;
+        return 0;
+        
     case WM_CHAR:
         switch(wParam)
         {
@@ -230,12 +471,24 @@ LRESULT CCalculatorEditControl::handleMessage(UINT message, WPARAM wParam, LPARA
         case '7':
         case '8':
         case '9':
+            break;
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case '=':
+        case VK_RETURN:
+        case 'c':
+        case 'C':
+            SendMessage(::GetParent(handle), WM_CHAR, wParam, lParam);
+            return 0;
+            
         case 0x08: //backspace
             break;
         case '.':
             length = SendMessage(handle, EM_LINELENGTH, 0, 0);
             if(!length)
-                return 1;
+                break;
     
             string = new TCHAR[length + 1];
             if(!string)
@@ -256,6 +509,11 @@ LRESULT CCalculatorEditControl::handleMessage(UINT message, WPARAM wParam, LPARA
         
         default:
             return 0;
+        }
+        if(CALC_EDIT_CTL_DISPLAY_RESULT == status)
+        {
+            status = CALC_EDIT_CTL_IDLE;
+            SendMessage(handle, WM_SETTEXT, 0, (LPARAM)TEXT(""));
         }
         break;
     }

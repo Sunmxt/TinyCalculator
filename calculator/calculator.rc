@@ -55,7 +55,7 @@ END
 IDD_CALC DIALOGEX 0, 0, 153, 165
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
-CAPTION "Dialog"
+CAPTION "Tiny Calculator"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     EDITTEXT        IDC_EDIT1,8,6,138,27,ES_RIGHT,WS_EX_CLIENTEDGE | WS_EX_RIGHT
@@ -75,12 +75,14 @@ BEGIN
     PUSHBUTTON      "6",IDC_NUM_6,96,90,19,19
     PUSHBUTTON      "8",IDC_NUM_8,66,114,19,19
     PUSHBUTTON      "=",IDC_EQUAL,96,139,19,19
-    PUSHBUTTON      "M+",IDC_MEM_PLUS,127,66,19,19
-    PUSHBUTTON      "M-",IDC_MEM_SUB,127,90,19,19
-    PUSHBUTTON      "MC",IDC_MEM_CLEAR,127,114,19,19
-    PUSHBUTTON      "MR",IDC_MEM_READ,127,139,19,19
+    PUSHBUTTON      "M+",IDC_MEM_PLUS,126,67,19,19
+    PUSHBUTTON      "M-",IDC_MEM_SUB,126,91,19,19
+    PUSHBUTTON      "MC",IDC_MEM_CLEAR,126,115,19,19
+    PUSHBUTTON      "MR",IDC_MEM_READ,126,139,19,19
     PUSHBUTTON      ".",IDC_DOT,36,139,19,19
     PUSHBUTTON      "CE",IDC_CLEAR_CUR,36,42,19,19
+    PUSHBUTTON      "MS",IDC_MEM_STORE,126,42,19,19
+    PUSHBUTTON      "Backspace",IDC_BACKSPACE,63,42,54,19
 END
 
 
@@ -102,6 +104,15 @@ BEGIN
 END
 #endif    // APSTUDIO_INVOKED
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON                    "calculator.ico"
 #endif    // 中文(中华人民共和国) resources
 /////////////////////////////////////////////////////////////////////////////
 

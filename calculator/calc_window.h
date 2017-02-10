@@ -1,27 +1,22 @@
 #include "slight_wnd.h"
+#include "logic.h"
 #include <iostream>
-
-#ifdef _UNICODE
-	#define lsprintf swprintf
-    #define tout    wcout
-    #define tstring wstring
-    #define tmemmove wmemmove
-    #define lstrchr wcschr
-    #define lstrrchr wcsrchr
-#else
-	#define lsprintf sprintf
-    #define tout cout
-    #define tstring string
-    #define tmemmove memmove
-    #define lstrchr strchr
-    #define lstrrchr strrchr
-#endif
 
 
 class CCalculatorEditControl : public Slight::CWinNativeView
 {
+    #define EM_CALC_DISPLAY_RESULT (WM_USER + 1)
+    
 public:
     LRESULT handleMessage(UINT message, WPARAM wParam, LPARAM lParam);
+    
+    CCalculatorEditControl();
+    
+protected:
+    uint status;
+    
+    #define CALC_EDIT_CTL_IDLE              0
+    #define CALC_EDIT_CTL_DISPLAY_RESULT    1
 };
 
 class CCalculatorWindow : public Slight::CWinNativeView
@@ -35,15 +30,38 @@ public:
     int OnControlNotify(UINT NotifyCode, UINT ID, HWND Handle);
     int OnInit(LPVOID Param);
     int OnEditChange(HWND Handle);
+    int OnPlus();
+    int OnSub();
+    int OnMul();
+    int OnDiv();
+    int OnEqual();
+    int OnRegPlus();
+    int OnRegSub();
+    int OnRegStore();
+    int OnRegShow();
+    int OnChar(TCHAR Charatrer, DWORD KeyData);
     
-    bool StandardizeString(TCHAR* String);
-    bool SaveFirstDigit();
+    int Calculate(std::tstring Number);
+    int CleanAll();
+    int CleanCurrent();
+    
+    bool StandardizeString(TCHAR* String, WPARAM &CaretStart, LPARAM &CaretEnd);
+    bool GetDigit(std::tstring &String);
     bool FillDigitString(TCHAR* String);
 
 protected:
-    std::tstring digit;
+    CCalculator calc;
+    CCalculator reg;
     
     CCalculatorEditControl edit_control;
+    
+    byte status;
+    #define CALC_STATUS_IDLE    0
+    #define CALC_PLUS_WAIT      1
+    #define CALC_SUB_WAIT       2
+    #define CALC_MUL_WAIT       3
+    #define CALC_DIV_WAIT       4
+    
 };
 
 

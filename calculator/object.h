@@ -12,6 +12,26 @@
 		#define SLIGHT_DEBUG
 	#endif
 	
+    #ifdef _UNICODE
+        #define lsprintf swprintf
+        #define tout    wcout
+        #define tstring wstring
+        #define tmemmove wmemmove
+        #define lstrchr wcschr
+        #define lstrrchr wcsrchr
+        #define lstrstr wcsstr
+        #define lsnprintf _snwprintf
+    #else
+        #define lsprintf sprintf
+        #define tout cout
+        #define tstring string
+        #define tmemmove memmove
+        #define lstrchr strchr
+        #define lstrrchr strrchr
+        #define lstrstr strstr
+        #define lsnprintf _snprintf
+    #endif
+    
 #endif
 
 #ifdef __GNUC__

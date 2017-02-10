@@ -25,15 +25,22 @@ public:
 #ifdef _DEBUG
     void CCalculatorApp::DebugInit()
     {
+        HANDLE console_standard_output;
+        DWORD written;
+        TCHAR* debug_info = TEXT("[Tiny calculator debug information]\n");
+        
         AllocConsole();
+        
+        console_standard_output = GetStdHandle(STD_OUTPUT_HANDLE);
+        WriteConsole(console_standard_output, debug_info, lstrlen(debug_info), &written, NULL);
 
         freopen("CONOUT$", "wt", stdout);
         freopen("CONOUT$", "wt", stderr);
         freopen("CONIN$", "rt", stdin);
 	
-        std::cout << "[cout]\n";
-        std::cerr << "[cerr]\n";
-        std::clog << "[clog]\n";
+        std::cout << "[cout] connected.\n";
+        std::cerr << "[cerr] connected.\n";
+        std::clog << "[clog] connected.\n";
     }
 
     void CCalculatorApp::DebugClean()

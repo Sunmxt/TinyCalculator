@@ -115,7 +115,7 @@
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
@@ -179,6 +179,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\logic.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\object.cpp"
 				>
 			</File>
@@ -194,6 +198,10 @@
 			>
 			<File
 				RelativePath=".\calc_window.h"
+				>
+			</File>
+			<File
+				RelativePath=".\logic.h"
 				>
 			</File>
 			<File
@@ -214,6 +222,10 @@
 			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
+			<File
+				RelativePath=".\calculator.ico"
+				>
+			</File>
 			<File
 				RelativePath=".\calculator.rc"
 				>
