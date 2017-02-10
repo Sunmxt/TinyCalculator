@@ -11,20 +11,17 @@ public:
     ~CCalculator();
     
     void assign(std::tstring Number);    
-        /* 
-            设置运算的第一个数字
-        */
     static double StringToDouble(std::tstring Number);
     
-    void plus(std::tstring Number);      //加
+    void plus(std::tstring Number);
     void plus(const CCalculator &Number);
-    void sub(std::tstring Number);       //减
+    void sub(std::tstring Number);
     void sub(const CCalculator &Number);
      
-    void multiply(std::tstring Number);  //乘
-    bool division(std::tstring Number);  //除
+    void multiply(std::tstring Number);
+    bool division(std::tstring Number);
     
-    void getResult(std::tstring &Number); //结果
+    void getResult(std::tstring &Number);
 
     CCalculator& operator=(const CCalculator& other);
 };

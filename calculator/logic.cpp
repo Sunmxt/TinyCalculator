@@ -10,16 +10,16 @@ double CCalculator::StringToDouble(std::tstring Number)
     std::tstring::iterator it=Number.begin();
     std::tstring::iterator loc=Number.begin();
     
-    for(loc;loc<Number.end();loc++)//确定小数点的位置付给迭代器loc
+    for(loc;loc<Number.end();loc++)
     {
         if(*loc=='.') break;
     } 
-    for(it;it<loc;it++)//小数点前的数
+    for(it;it<loc;it++)
     {
         num +=((*it)-48)*pow(10.0,loc-it-1);
     }
-    if(it!=Number.end()) it++;//必要的判断否者溢出出错
-    while(it<Number.end())//小数点后的数
+    if(it!=Number.end()) it++;
+    while(it<Number.end())
     {
         num +=((*it)-48)*pow(10.0,loc-it);
         it++;
@@ -37,7 +37,7 @@ CCalculator::~CCalculator()
 {
 }
 
-void CCalculator::assign(std::tstring Number)//字符串转double型
+void CCalculator::assign(std::tstring Number)
 {
 	result = StringToDouble(Number);
 }
